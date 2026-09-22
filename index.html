@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pix copia e cola</title>
+<style>
+  body{font-family:-apple-system,system-ui,sans-serif;background:#F5F7F6;color:#1C1F1E;margin:0;padding:24px;display:flex;justify-content:center}
+  main{max-width:420px;width:100%}
+  h1{font-size:20px;margin:0 0 4px;color:#0F7A5A}
+  p{margin:6px 0 14px;color:#555}
+  .valor{font-size:28px;font-weight:700;margin:8px 0}
+  textarea{width:100%;height:120px;font:13px ui-monospace,Menlo,monospace;padding:10px;border:1px solid #cfd8d4;border-radius:10px;background:#fff;box-sizing:border-box;word-break:break-all}
+  button{width:100%;margin-top:12px;padding:16px;font-size:17px;font-weight:600;color:#fff;background:#0F7A5A;border:0;border-radius:12px}
+  button.ok{background:#0A5C44}
+  small{display:block;margin-top:14px;color:#777}
+</style></head><body><main>
+<h1>Pix copia e cola</h1>
+<p><span id="fav"></span></p>
+<div class="valor"><span id="val"></span></div>
+<textarea id="c" readonly></textarea>
+<button id="b" onclick="copiar()">Copiar código</button>
+<small>Depois, abra o app do seu banco, escolha Pix copia e cola e cole. Confira o nome e o valor antes de confirmar.</small>
+</main>
+<script>
+async function copiar(){const t=document.getElementById('c');t.select();try{await navigator.clipboard.writeText(t.value)}catch(e){document.execCommand('copy')}
+const b=document.getElementById('b');b.textContent='Copiado';b.className='ok';}
+
+// O código vem no fragmento (#c=...), que nunca chega ao servidor.
+(function(){const p=new URLSearchParams(location.hash.slice(1));const c=(p.get('c')||'').trim();document.getElementById('c').value=c;
+function campos(s){let i=0,o={};while(i+4<=s.length){const id=s.slice(i,i+2),n=parseInt(s.slice(i+2,i+4),10);if(isNaN(n))break;o[id]=s.slice(i+4,i+4+n);i+=4+n;}return o;}
+const f=campos(c);if(f['54'])document.getElementById('val').textContent='R$ '+Number(f['54']).toLocaleString('pt-BR',{minimumFractionDigits:2});
+if(f['59'])document.getElementById('fav').textContent='Favorecido: '+f['59'];})();
+</script></body></html>
