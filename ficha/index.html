@@ -34,7 +34,7 @@
 const API = "https://neujwgxqlrobiwgghsat.supabase.co/functions/v1/ficha";
 const t = new URLSearchParams(location.search).get("t") || "";
 const app = document.getElementById("app");
-const DOCS = [["rg_frente","RG ou CNH (frente)"],["rg_verso","RG ou CNH (verso)"],["comprovante_renda","Comprovante de renda"],["comprovante_residencia","Comprovante de residência"]];
+const DOCS = [["rg_frente","RG ou CNH (frente)"],["rg_verso","RG ou CNH (verso)"],["comprovante_renda","Comprovante de renda"],["comprovante_residencia","Comprovante de residência (opcional)"]];
 let estado = null, enviados = new Set();
 
 function reais(c){return c==null?"":"R$ "+(c/100).toLocaleString("pt-BR",{minimumFractionDigits:2})}
@@ -108,7 +108,7 @@ async function enviarDoc(tipo,input){
 async function enviar(ev){
   ev.preventDefault(); const erro=document.getElementById("erro"); erro.textContent="";
   if(!document.getElementById("aceite").checked){erro.textContent="Marque o aceite do uso dos dados.";return}
-  const faltam=DOCS.filter(d=>!enviados.has(d[0])); if(faltam.length&&!confirm("Faltam documentos: "+faltam.map(d=>d[1]).join(", ")+". Enviar mesmo assim?"))return;
+  const faltam=DOCS.filter(d=>!enviados.has(d[0])&&d[0]!=="comprovante_residencia"); if(faltam.length&&!confirm("Faltam documentos: "+faltam.map(d=>d[1]).join(", ")+". Enviar mesmo assim?"))return;
   const b=document.getElementById("enviar"); b.disabled=true; b.textContent="Enviando…";
   try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t,dados:coletar(),aceite:true})}); const j=await r.json(); if(!r.ok)throw new Error(j.erro||"Falha");
     localStorage.removeItem("ficha:"+t); estado.status="preenchida"; estado.dados=coletar(); reabrir=false; render()}
