@@ -83,8 +83,8 @@ function render(){
   <button type="button" onclick="addMorador()" style="background:#fff;color:var(--verde);border:1px solid var(--verde)">Adicionar morador</button>
   ${campo("animais","Animais de estimação (quais e quantos)")}
   <h2>Documentos</h2>
-  <p>Fotografe com boa luz, sem cortar as bordas.</p>
-  ${DOCS.map(d=>`<div class="doc"><span>${d[1]}<br><small id="s_${d[0]}" class="${enviados.has(d[0])?"ok":""}">${enviados.has(d[0])?"Enviado":"Pendente"}</small></span><label>Enviar<input type="file" accept="image/*,application/pdf" capture="environment" onchange="enviarDoc('${d[0]}',this)"></label></div>`).join("")}
+  <p>Tire uma foto na hora, escolha da galeria ou envie um PDF. Com boa luz e sem cortar as bordas.</p>
+  ${DOCS.map(d=>`<div class="doc"><span>${d[1]}<br><small id="s_${d[0]}" class="${enviados.has(d[0])?"ok":""}">${enviados.has(d[0])?"Enviado":"Pendente"}</small></span><label>Enviar<input type="file" accept="image/*,application/pdf" onchange="enviarDoc('${d[0]}',this)"></label></div>`).join("")}
   <h2>Observações</h2>
   ${campo("observacoes","Algo que o corretor deva saber")}
   <div class="aviso"><label style="display:flex;gap:10px;align-items:flex-start;color:var(--texto)"><input type="checkbox" id="aceite" style="width:auto;margin-top:3px" ${estado.aceite?"checked":""}> <span>Autorizo o uso destes dados e documentos exclusivamente para a análise de cadastro e, se aprovado, para a elaboração e execução do contrato de locação, conforme a Lei 13.709/2018 (LGPD). Os documentos ficam em área restrita e são apagados após o prazo de guarda.</span></label></div>
