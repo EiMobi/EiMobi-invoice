@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ficha de cadastro</title>
+<style>
+  :root{--verde:#0F7A5A;--escuro:#0A5C44;--fundo:#F5F7F6;--texto:#1C1F1E;--cinza:#666;--borda:#cfd8d4;--erro:#C8462B}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,system-ui,sans-serif;background:var(--fundo);color:var(--texto);margin:0;padding:16px;line-height:1.4}
+  main{max-width:520px;margin:0 auto}
+  h1{font-size:20px;color:var(--verde);margin:8px 0 4px}
+  h2{font-size:17px;margin:20px 0 8px}
+  p{margin:6px 0;color:var(--cinza)}
+  .imovel{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px;margin:12px 0}
+  label{display:block;font-size:14px;color:var(--cinza);margin-top:12px}
+  input,select,textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--borda);border-radius:10px;background:#fff;margin-top:4px}
+  input.corrigir,select.corrigir,textarea.corrigir{border-color:var(--erro);background:#fff6f4}
+  .linha{display:flex;gap:8px}.linha>div{flex:1}
+  .doc{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .doc .ok{color:var(--verde);font-weight:600}
+  .doc input{display:none}
+  .doc label{margin:0;color:var(--verde);font-weight:600;padding:8px 12px;border:1px solid var(--verde);border-radius:8px;white-space:nowrap}
+  button{width:100%;margin-top:18px;padding:16px;font-size:17px;font-weight:600;color:#fff;background:var(--verde);border:0;border-radius:12px}
+  button:disabled{opacity:.5}
+  .aviso{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px;margin-top:16px;font-size:14px}
+  .aviso.correcao{border-color:var(--erro)}
+  .erro{color:var(--erro);margin-top:10px;font-weight:600}
+  .sucesso{text-align:center;padding:40px 10px}
+  .sucesso h1{font-size:24px}
+  .morador{display:flex;gap:8px;margin-top:8px}.morador input{margin:0}
+  small{color:var(--cinza)}
+</style></head><body><main>
+<div id="app"><p>Carregando…</p></div>
+</main>
+<script>
+const API = "https://neujwgxqlrobiwgghsat.supabase.co/functions/v1/ficha";
+const t = new URLSearchParams(location.search).get("t") || "";
+const app = document.getElementById("app");
+const DOCS = [["rg_frente","RG ou CNH (frente)"],["rg_verso","RG ou CNH (verso)"],["comprovante_renda","Comprovante de renda"],["comprovante_residencia","Comprovante de residência"]];
+let estado = null, enviados = new Set();
+
+function reais(c){return c==null?"":"R$ "+(c/100).toLocaleString("pt-BR",{minimumFractionDigits:2})}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function mascara(m,v){const d=String(v).replace(/\D/g,"");let r="",i=0;for(const ch of m){if(i>=d.length)break;if(ch==="#"){r+=d[i++]}else r+=ch}return r}
+function ligarMascaras(){
+  const cpf=document.querySelector('[name=cpf]'); cpf&&cpf.addEventListener("input",e=>e.target.value=mascara("###.###.###-##",e.target.value));
+  const tel=document.querySelector('[name=telefone]'); tel&&tel.addEventListener("input",e=>{const d=e.target.value.replace(/\D/g,"");e.target.value=mascara(d.length<=10?"(##) ####-####":"(##) #####-####",d.slice(0,11))});
+}
+function campo(nome,rotulo,tipo="text",extra=""){
+  const v=esc(estado.dados[nome]??""); const c=estado.campos_corrigir.includes(nome)?"corrigir":"";
+  return `<label>${rotulo}<input class="${c}" name="${nome}" type="${tipo}" value="${v}" ${extra}></label>`;
+}
+function selecao(nome,rotulo,opcoes){
+  const v=estado.dados[nome]??""; const c=estado.campos_corrigir.includes(nome)?"corrigir":"";
+  return `<label>${rotulo}<select class="${c}" name="${nome}"><option value="">Selecione</option>${opcoes.map(o=>`<option ${o[0]===v?"selected":""} value="${o[0]}">${o[1]}</option>`).join("")}</select></label>`;
+}
+function render(){
+  if(!estado){app.innerHTML=`<p class="erro">${esc(mensagemErro||"Link inválido.")}</p>`;return}
+  if(estado.status==="preenchida"&&!reabrir){app.innerHTML=`<div class="sucesso"><h1>Ficha enviada</h1><p>Obrigado, ${esc(estado.dados.nome||"")}. O corretor vai conferir e entrar em contato.</p><button onclick="reabrir=true;render()">Revisar meus dados</button></div>`;return}
+  const im=estado.imovel; const mor=Array.isArray(estado.dados.moradores)?estado.dados.moradores:[];
+  app.innerHTML=`
+  <h1>Ficha de cadastro</h1>
+  <p>Olá${estado.nome_convite?", "+esc(estado.nome_convite):""}! Preencha com calma; seus dados ficam salvos neste aparelho até você enviar.</p>
+  ${im?`<div class="imovel"><b>${esc(im.apelido)}</b><br><small>${esc([im.bairro,im.cidade].filter(Boolean).join(" · "))}${im.aluguel?" · Aluguel "+reais(im.aluguel):""}</small></div>`:""}
+  ${estado.status==="correcao"?`<div class="aviso correcao"><b>O corretor pediu correções.</b> ${esc(estado.observacoes_corretor||"")} Os campos marcados em vermelho precisam ser revistos.</div>`:""}
+  <form id="f">
+  <h2>Dados pessoais</h2>
+  ${campo("nome","Nome completo, exatamente como no CPF")}
+  <div class="linha"><div>${campo("cpf","CPF","text",'inputmode="numeric"')}</div><div>${campo("nascimento","Nascimento","date")}</div></div>
+  <div class="linha"><div>${campo("rg","RG")}</div><div>${campo("rg_orgao","Órgão emissor")}</div></div>
+  <div class="linha"><div>${selecao("genero","Gênero",[["F","Feminino"],["M","Masculino"]])}</div><div>${selecao("estado_civil","Estado civil",[["solteiro(a)","Solteiro(a)"],["casado(a)","Casado(a)"],["divorciado(a)","Divorciado(a)"],["viúvo(a)","Viúvo(a)"],["união estável","União estável"]])}</div></div>
+  ${campo("nacionalidade","Nacionalidade")}
+  ${campo("profissao","Profissão")}
+  <div class="linha"><div>${campo("telefone","Telefone / WhatsApp","tel")}</div><div>${campo("email","E-mail","email")}</div></div>
+  <h2>Onde mora hoje</h2>
+  ${campo("endereco_atual","Endereço atual")}
+  ${campo("tempo_endereco","Há quanto tempo")}
+  <h2>Ocupação e renda</h2>
+  ${selecao("ocupacao","Situação",[["clt","Empregado(a) CLT"],["servidor","Servidor(a) público"],["autonomo","Autônomo(a)"],["empresario","Empresário(a)"],["aposentado","Aposentado(a)"],["estudante","Estudante"],["outro","Outro"]])}
+  ${campo("empregador","Empregador ou atividade")}
+  ${campo("renda","Renda mensal (R$)","text",'inputmode="numeric"')}
+  <h2>Quem vai morar</h2>
+  <p>Além de você. Deixe vazio se morar só.</p>
+  <div id="moradores">${mor.map((m,i)=>morador(m,i)).join("")}</div>
+  <button type="button" onclick="addMorador()" style="background:#fff;color:var(--verde);border:1px solid var(--verde)">Adicionar morador</button>
+  ${campo("animais","Animais de estimação (quais e quantos)")}
+  <h2>Documentos</h2>
+  <p>Fotografe com boa luz, sem cortar as bordas.</p>
+  ${DOCS.map(d=>`<div class="doc"><span>${d[1]}<br><small id="s_${d[0]}" class="${enviados.has(d[0])?"ok":""}">${enviados.has(d[0])?"Enviado":"Pendente"}</small></span><label>Enviar<input type="file" accept="image/*,application/pdf" capture="environment" onchange="enviarDoc('${d[0]}',this)"></label></div>`).join("")}
+  <h2>Observações</h2>
+  ${campo("observacoes","Algo que o corretor deva saber")}
+  <div class="aviso"><label style="display:flex;gap:10px;align-items:flex-start;color:var(--texto)"><input type="checkbox" id="aceite" style="width:auto;margin-top:3px" ${estado.aceite?"checked":""}> <span>Autorizo o uso destes dados e documentos exclusivamente para a análise de cadastro e, se aprovado, para a elaboração e execução do contrato de locação, conforme a Lei 13.709/2018 (LGPD). Os documentos ficam em área restrita e são apagados após o prazo de guarda.</span></label></div>
+  <div id="erro" class="erro"></div>
+  <button id="enviar" type="submit">Enviar ficha</button>
+  </form>`;
+  ligarMascaras();
+  document.getElementById("f").addEventListener("input",salvarRascunho);
+  document.getElementById("f").addEventListener("submit",enviar);
+}
+function morador(m,i){return `<div class="morador"><input placeholder="Nome" value="${esc(m.nome||"")}" oninput="moradores[${i}].nome=this.value;salvarRascunho()"><input placeholder="Parentesco" value="${esc(m.parentesco||"")}" oninput="moradores[${i}].parentesco=this.value;salvarRascunho()"></div>`}
+let moradores=[]; function addMorador(){moradores.push({nome:"",parentesco:""});document.getElementById("moradores").insertAdjacentHTML("beforeend",morador(moradores[moradores.length-1],moradores.length-1))}
+function coletar(){const o={};new FormData(document.getElementById("f")).forEach((v,k)=>o[k]=v);o.moradores=moradores.filter(m=>m.nome);return o}
+function salvarRascunho(){try{localStorage.setItem("ficha:"+t,JSON.stringify(coletar()))}catch(e){}}
+async function enviarDoc(tipo,input){
+  const arq=input.files[0]; if(!arq)return; const s=document.getElementById("s_"+tipo); s.textContent="Enviando…";
+  const fd=new FormData(); fd.append("t",t); fd.append("tipo",tipo); fd.append("arquivo",arq);
+  try{const r=await fetch(API,{method:"POST",body:fd}); const j=await r.json(); if(!r.ok)throw new Error(j.erro||"Falha"); enviados.add(tipo); s.textContent="Enviado"; s.className="ok"}
+  catch(e){s.textContent="Falhou: "+e.message; s.className=""}
+}
+async function enviar(ev){
+  ev.preventDefault(); const erro=document.getElementById("erro"); erro.textContent="";
+  if(!document.getElementById("aceite").checked){erro.textContent="Marque o aceite do uso dos dados.";return}
+  const faltam=DOCS.filter(d=>!enviados.has(d[0])); if(faltam.length&&!confirm("Faltam documentos: "+faltam.map(d=>d[1]).join(", ")+". Enviar mesmo assim?"))return;
+  const b=document.getElementById("enviar"); b.disabled=true; b.textContent="Enviando…";
+  try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({t,dados:coletar(),aceite:true})}); const j=await r.json(); if(!r.ok)throw new Error(j.erro||"Falha");
+    localStorage.removeItem("ficha:"+t); estado.status="preenchida"; estado.dados=coletar(); reabrir=false; render()}
+  catch(e){erro.textContent=e.message; b.disabled=false; b.textContent="Enviar ficha"}
+}
+let reabrir=false, mensagemErro="";
+(async()=>{
+  try{const r=await fetch(API+"?t="+encodeURIComponent(t)); const j=await r.json(); if(!r.ok)throw new Error(j.erro||"Link inválido"); estado=j;
+    try{const rascunho=JSON.parse(localStorage.getItem("ficha:"+t)||"null"); if(rascunho&&estado.status!=="preenchida")estado.dados={...estado.dados,...rascunho}}catch(e){}
+    enviados=new Set(estado.documentos||[]); moradores=Array.isArray(estado.dados.moradores)?estado.dados.moradores:[]}
+  catch(e){mensagemErro=e.message}
+  render();
+})();
+</script></body></html>
